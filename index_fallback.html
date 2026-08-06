@@ -1,0 +1,363 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>피지컬케어 필라테스 시퀀스 메이커</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+<style>
+    @page { size: A4 landscape; margin: 0; }
+    body { font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; margin: 0; padding: 0; background-color: #F4F7F9; color: #333; -webkit-print-color-adjust: exact; print-color-adjust: exact; display: flex; height: 100vh; overflow: hidden; }
+    * { box-sizing: border-box; }
+    
+    .sidebar { width: 400px; background-color: #FFFFFF; border-right: none; display: flex; flex-direction: column; height: 100%; box-shadow: 4px 0 24px rgba(0,0,0,0.06); z-index: 10; }
+    .sidebar-header { padding: 24px; border-bottom: 1px solid #F0F0F0; background-color: #FFFFFF; }
+    .sidebar-header h2 { margin: 0 0 12px 0; font-size: 20px; font-weight: 700; color: #1A1A1A; letter-spacing: -0.5px; }
+    .sidebar-header p { margin: 0 0 16px 0; font-size: 13px; color: #666; line-height: 1.5; word-break: keep-all; }
+    .sidebar-content { flex: 1; padding: 20px; overflow-y: auto; display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; align-content: start; background-color: #FAFAFA; }
+    
+    /* 팔레트 아이템 가시성 버그 수정 및 앱 스타일 디자인 */
+    .palette-item { 
+        width: 100%; 
+        padding-bottom: 85.7%; /* 7:6 비율 고정 */
+        background-size: 300% 200%; 
+        background-repeat: no-repeat; 
+        border-radius: 14px; 
+        cursor: grab; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06); 
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+        border: 2px solid transparent; 
+        position: relative; 
+        overflow: hidden; 
+        background-color: #FFFFFF;
+    }
+    .palette-item:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.12); border-color: #E2E8F0; z-index: 5; }
+    .palette-item:active { cursor: grabbing; transform: scale(0.98); }
+    
+    /* 뱃지 Glassmorphism */
+    .badge { 
+        position: absolute; 
+        top: 8px; 
+        left: 8px; 
+        background: rgba(0, 0, 0, 0.5); 
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        color: white; 
+        font-size: 11px; 
+        font-weight: 600;
+        padding: 4px 8px; 
+        border-radius: 20px; 
+        pointer-events: none; 
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    /* 하단 타이틀 가독성 개선 */
+    .palette-title { 
+        position: absolute; 
+        bottom: 0; 
+        left: 0; 
+        width: 100%; 
+        background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 50%, transparent 100%); 
+        color: #fff; 
+        font-size: 12px;
+        font-weight: 500;
+        padding: 24px 8px 8px 8px; 
+        text-align: center; 
+        white-space: nowrap; 
+        overflow: hidden; 
+        text-overflow: ellipsis; 
+        pointer-events: none; 
+    }
+    
+    .main-content { flex: 1; overflow-y: auto; padding: 40px; background-color: #F4F7F9; }
+    
+    .local-fallback { background: #FFFBEB; border: 1px solid #FDE68A; padding: 12px; border-radius: 12px; margin-bottom: 16px; }
+    .local-fallback p { margin: 0 0 8px 0 !important; color: #D97706 !important; font-weight: 600; font-size: 12px; }
+    input[type="file"] { display: block; width: 100%; font-size: 13px; padding: 4px; }
+    
+    /* 모던 버튼 디자인 */
+    button.btn-print { width: 100%; padding: 14px; background: #2563EB; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 14px; transition: all 0.2s; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
+    button.btn-print:hover { background: #1D4ED8; box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3); transform: translateY(-1px); }
+    button.btn-print:active { transform: translateY(1px); }
+    
+    button.btn-clear { width: 100%; padding: 12px; margin-top: 12px; background: #FFFFFF; color: #EF4444; border: 1px solid #FECACA; border-radius: 12px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+    button.btn-clear:hover { background: #FEF2F2; border-color: #FCA5A5; }
+    
+    .page { width: 297mm; height: 210mm; margin: 0 auto 40px auto; padding: 15mm; background-color: #FFFFFF; box-shadow: 0 10px 40px rgba(0,0,0,0.08); border-radius: 8px; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 16px; }
+    .cell { position: relative; background-color: #FFFFFF; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; box-shadow: 0 2px 10px rgba(0,0,0,0.02); border: 2px dashed #E2E8F0; transition: all 0.2s; }
+    .cell.drag-over { border-color: #3B82F6; background-color: #EFF6FF; transform: scale(1.02); }
+    
+    .btn-delete-cell { position: absolute; top: 10px; right: 10px; background: #EF4444; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 12px; display: none; align-items: center; justify-content: center; z-index: 10; font-weight: bold; box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4); transition: transform 0.2s; }
+    .btn-delete-cell:hover { background: #DC2626; transform: scale(1.15); }
+    .cell.has-content:hover .btn-delete-cell { display: flex; }
+    
+    .img-box { width: 85%; padding-bottom: 72.85%; background-size: 300% 200%; background-repeat: no-repeat; border-radius: 10px; background-color: #F8FAFC; margin: 0 auto 12px auto; }
+    
+    .input-seq { width: 100%; text-align: center; font-size: 12px; color: #94A3B8; font-weight: 700; letter-spacing: 2px; margin-bottom: 6px; border: none; background: transparent; outline: none; }
+    .input-title { width: 100%; text-align: center; font-size: 15px; color: #1E293B; font-weight: 600; line-height: 1.4; border: none; background: transparent; outline: none; resize: none; overflow: hidden; }
+    .input-title::placeholder { color: #CBD5E1; font-weight: 500; }
+    
+    .pos-0 { background-position: 0% 0%; }
+    .pos-1 { background-position: 50% 0%; }
+    .pos-2 { background-position: 100% 0%; }
+    .pos-3 { background-position: 0% 100%; }
+    .pos-4 { background-position: 50% 100%; }
+    .pos-5 { background-position: 100% 100%; }
+    
+    @media print { 
+        .sidebar, .btn-delete-cell { display: none !important; } 
+        .main-content { overflow: visible !important; padding: 0 !important; background: #FFFFFF !important; }
+        .page { width: 100vw !important; height: 100vh !important; margin: 0 !important; border: none !important; box-shadow: none !important; page-break-after: always; page-break-inside: avoid; border-radius: 0; }
+        .cell { border: none !important; }
+        input::placeholder, textarea::placeholder { color: transparent !important; }
+    }
+</style>
+</head>
+<body>
+
+    <div class="sidebar no-print">
+        <div class="sidebar-header">
+            <h2>✨ 피지컬케어 시퀀스 메이커</h2>
+            <p>미리 세팅된 동작을 우측 빈칸으로 끌어다 놓아 나만의 수업 시퀀스를 조립하세요.</p>
+            
+            <!-- 컴퓨터에서 바로 열었을 때를 대비한 비상용 버튼 -->
+            <div class="local-fallback">
+                <p>※ 내 컴퓨터에서 파일 열 때만 사용하세요.</p>
+                <input type="file" id="imageInput" multiple accept="image/*">
+            </div>
+
+            <button class="btn-print" onclick="window.print()">🖨️ PDF로 저장하기</button>
+            <button class="btn-clear" onclick="clearBoard()">🗑️ 전체 보드 비우기</button>
+        </div>
+        <div class="sidebar-content" id="palette"></div>
+    </div>
+    
+    <div class="main-content" id="board"></div>
+
+<script>
+    const db = {
+        "골반": [
+            "90-90 고관절 회전 동적 스트레칭", "앉은 자세 발목 굽힘 동적 스트레칭", "캣카우 엑서사이즈", "무릎꿇고 정강뼈로 종아리 마사지", "누워서 양무릎 가슴으로 끌어안기", "누워서 소흉근 스트레칭",
+            "양무릎 가슴 안기 복귀", "힙 브릿지 유지 (1:1 교정)", "90-90 자세 후 상체 앞으로 숙임", "90-90 자세 만세 후 사이드 벤딩", "90-90 자세 상체 회전", "90-90 동측 회전 후 상체 굽힘",
+            "90-90 자세 상체 뒤로 브릿지", "반대쪽 90-90 상체 앞으로 숙임", "반대쪽 90-90 사이드 벤딩", "반대쪽 90-90 상체 회전", "반대쪽 90-90 동측 회전 굽힘", "반대쪽 90-90 상체 뒤로 브릿지",
+            "90-90 고관절 회전 복귀", "양반다리 변형 상체 앞으로 숙임", "양반다리 후 상체 회전", "반대쪽 양반다리 상체 숙임", "반대쪽 양반다리 상체 회전", "양반다리 팔꿈치 무릎 컨택 회전",
+            "한다리 뒤로 뻗은 이상근 스트레칭", "이상근 스트레칭 중 발목 당겨오기", "반대쪽 이상근 스트레칭", "반대쪽 발목 당겨오기", "조명 끄고 싱잉볼 휴식 (사바아사나)", "인사 및 마무리"
+        ],
+        "코어": [
+            "앉아서 명상자세", "손목 굽힘근 스트레칭", "명상자세 재진행", "네발기기 골반 동적 스트레칭", "90-90 동적 스트레칭", "90-90 상체 숙여 엎드리기",
+            "골반 들며 반대쪽 손 뻗기", "반대쪽 90-90 동적 스트레칭", "반대쪽 90-90 상체 숙여 엎드리기", "앉아서 발바닥 잡고 SLR 스트레칭", "SLR 유지 후 합장 몸통회전", "SLR 유지 팔 뻗으며 몸통회전",
+            "반대쪽 발바닥 잡고 SLR", "반대쪽 팔 뻗으며 몸통회전", "좌전굴 자세 정적 스트레칭", "서서 만세 스트레칭", "푸시업 자세 (하이 플랭크)", "닐링 푸시업 후 코브라 스트레칭",
+            "다운독 (ㅅ 모양) 자세", "푸시업 자세 재진행", "코브라 자세 재진행", "다운독 (ㅅ 모양) 재진행", "Child pose 스트레칭", "Supine... relax... sleep.... zZž",
+            "Side lying (옆으로 눕기)", "Sitted pose (앉은 자세)", "마무리 심호흡", "경추 측굴 스트레칭 (좌)", "경추 측굴 스트레칭 (우)", "인사 및 마무리"
+        ],
+        "근막": [
+            "안락자세 심호흡하기", "닐링자세 양측 만세 스트레칭", "닐링자세 경추 측굴 스트레칭", "닐링자세 경추 굴곡 스트레칭", "닐링자세 배측굴곡근 정적 스트레칭", "견관절 내회전 가동성 스트레칭",
+            "닐링자세 정강뼈 종아리 마사지", "90-90 체간 측굴 스트레칭", "나비자세 동적 스트레칭", "흉추 신전 폼롤러 스트레칭", "오픈북 흉추 회전 스트레칭", "누운 자세 깍지껴서 만세 스트레칭"
+        ]
+    };
+
+    let draggedData = null;
+
+    function handleDragStart(e) {
+        draggedData = { url: e.target.dataset.url, pos: e.target.dataset.pos, title: e.target.dataset.title };
+        e.dataTransfer.setData('text/plain', 'dummy');
+        e.target.style.opacity = '0.4';
+    }
+
+    function handleDragEnd(e) { e.target.style.opacity = '1'; }
+    function handleDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+    function handleDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        e.currentTarget.classList.remove('drag-over');
+        if (draggedData) {
+            const cell = e.currentTarget;
+            const imgBox = cell.querySelector('.img-box');
+            imgBox.style.backgroundImage = `url('${draggedData.url}')`;
+            imgBox.className = 'img-box pos-' + draggedData.pos;
+            const inputTitle = cell.querySelector('.input-title');
+            if (draggedData.title) {
+                inputTitle.value = draggedData.title;
+                inputTitle.style.height = 'auto';
+                inputTitle.style.height = (inputTitle.scrollHeight) + 'px';
+            }
+            cell.classList.add('has-content');
+        }
+    }
+    
+    window.deleteCell = function(btn) {
+        const cell = btn.parentElement;
+        const imgBox = cell.querySelector('.img-box');
+        const inputTitle = cell.querySelector('.input-title');
+        imgBox.style.backgroundImage = 'none';
+        imgBox.className = 'img-box';
+        inputTitle.value = '';
+        inputTitle.style.height = 'auto';
+        cell.classList.remove('has-content');
+    }
+
+    const board = document.getElementById('board');
+    for (let p = 0; p < 5; p++) {
+        let page = document.createElement('div');
+        page.className = 'page';
+        for (let c = 0; c < 6; c++) {
+            let cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.addEventListener('dragover', handleDragOver);
+            cell.addEventListener('dragleave', handleDragLeave);
+            cell.addEventListener('drop', handleDrop);
+            let seqNum = (p * 6 + c + 1).toString().padStart(2, '0');
+            cell.innerHTML = `
+                <button class="btn-delete-cell no-print" onclick="deleteCell(this)" title="삭제">✕</button>
+                <div class="img-box"></div>
+                <input type="text" class="input-seq" value="SEQUENCE ${seqNum}">
+                <textarea class="input-title" rows="2" placeholder="이곳으로 이미지를 끌어다 놓으세요."></textarea>
+            `;
+            page.appendChild(cell);
+        }
+        board.appendChild(page);
+    }
+
+    document.addEventListener('input', function (event) {
+        if (event.target.classList.contains('input-title')) {
+            event.target.style.height = 'auto';
+            event.target.style.height = (event.target.scrollHeight) + 'px';
+            const cell = event.target.closest('.cell');
+            if (event.target.value.trim() !== '') {
+                cell.classList.add('has-content');
+            } else {
+                const imgBox = cell.querySelector('.img-box');
+                if (imgBox.style.backgroundImage === '' || imgBox.style.backgroundImage === 'none') {
+                    cell.classList.remove('has-content');
+                }
+            }
+        }
+    }, false);
+
+    window.clearBoard = function() {
+        if(confirm('배치한 시퀀스와 텍스트를 모두 지우시겠습니까?')) {
+            const cells = document.querySelectorAll('.page .cell');
+            cells.forEach(cell => {
+                const box = cell.querySelector('.img-box');
+                box.style.backgroundImage = 'none';
+                box.className = 'img-box'; 
+                const area = cell.querySelector('.input-title');
+                area.value = '';
+                area.style.height = 'auto';
+                cell.classList.remove('has-content');
+            });
+        }
+    }
+    
+    // 파일 수동 업로드 (로컬 테스트용)
+    document.getElementById('imageInput').addEventListener('change', function(e) {
+        const files = Array.from(e.target.files);
+        const palette = document.getElementById('palette');
+        
+        files.forEach(file => {
+            let fileURL = URL.createObjectURL(file);
+            let fileName = file.name;
+            
+            let category = "";
+            let pageNum = 1;
+            
+            if(fileName.includes("골반")) category = "골반";
+            else if(fileName.includes("코어")) category = "코어";
+            else if(fileName.includes("근막")) category = "근막";
+            
+            let numMatch = fileName.match(/\d+/);
+            if(numMatch) pageNum = parseInt(numMatch[0]);
+
+            for (let i = 0; i < 6; i++) {
+                let item = document.createElement('div');
+                item.className = 'palette-item pos-' + i;
+                item.style.backgroundImage = `url('${fileURL}')`;
+                item.draggable = true;
+                item.dataset.url = fileURL;
+                item.dataset.pos = i;
+                
+                let actionTitle = "";
+                if(category && db[category]) {
+                    let dataIndex = (pageNum - 1) * 6 + i;
+                    if(db[category][dataIndex]) {
+                        actionTitle = db[category][dataIndex];
+                        item.dataset.title = actionTitle;
+                        
+                        let badge = document.createElement('div');
+                        badge.className = 'badge';
+                        badge.innerText = category + " " + (dataIndex + 1);
+                        item.appendChild(badge);
+                    }
+                }
+                
+                let titleDiv = document.createElement('div');
+                titleDiv.className = 'palette-title';
+                titleDiv.innerText = actionTitle ? actionTitle : '이름 없음';
+                titleDiv.title = actionTitle;
+                item.appendChild(titleDiv);
+                
+                item.addEventListener('dragstart', handleDragStart);
+                item.addEventListener('dragend', handleDragEnd);
+                
+                palette.appendChild(item);
+            }
+        });
+        e.target.value = ''; // 초기화
+    });
+
+    // 🔥 로딩 시 배포용 폴더(images) 안의 파일들을 자동으로 불러와 팔레트를 채우는 마법의 코드
+    window.onload = function() {
+        const preloadedFiles = [
+            { name: '골반_1.png', cat: '골반', p: 1 }, { name: '골반_2.png', cat: '골반', p: 2 }, { name: '골반_3.png', cat: '골반', p: 3 }, { name: '골반_4.png', cat: '골반', p: 4 }, { name: '골반_5.png', cat: '골반', p: 5 },
+            { name: '코어_1.png', cat: '코어', p: 1 }, { name: '코어_2.png', cat: '코어', p: 2 }, { name: '코어_3.png', cat: '코어', p: 3 }, { name: '코어_4.png', cat: '코어', p: 4 }, { name: '코어_5.png', cat: '코어', p: 5 },
+            { name: '근막_1.png', cat: '근막', p: 1 }, { name: '근막_2.png', cat: '근막', p: 2 }
+        ];
+        
+        const palette = document.getElementById('palette');
+        
+        preloadedFiles.forEach(fileData => {
+            const fileURL = 'images/' + fileData.name; // 상대 경로
+            for (let i = 0; i < 6; i++) {
+                let item = document.createElement('div');
+                item.className = 'palette-item pos-' + i;
+                item.style.backgroundImage = `url('${fileURL}')`;
+                item.draggable = true;
+                item.dataset.url = fileURL;
+                item.dataset.pos = i;
+                
+                let actionTitle = "";
+                if(db[fileData.cat]) {
+                    let dataIndex = (fileData.p - 1) * 6 + i;
+                    if(db[fileData.cat][dataIndex]) {
+                        actionTitle = db[fileData.cat][dataIndex];
+                        item.dataset.title = actionTitle;
+                        
+                        let badge = document.createElement('div');
+                        badge.className = 'badge';
+                        badge.innerText = fileData.cat + " " + (dataIndex + 1);
+                        item.appendChild(badge);
+                    }
+                }
+                
+                let titleDiv = document.createElement('div');
+                titleDiv.className = 'palette-title';
+                titleDiv.innerText = actionTitle ? actionTitle : '이름 없음';
+                titleDiv.title = actionTitle;
+                item.appendChild(titleDiv);
+                
+                item.addEventListener('dragstart', handleDragStart);
+                item.addEventListener('dragend', handleDragEnd);
+                
+                // 에러 처리: 웹 서버가 아니거나 파일이 없어서 에러나면 팔레트에서 숨김
+                let imgTest = new Image();
+                imgTest.onerror = function() { item.style.display = 'none'; };
+                imgTest.src = fileURL;
+                
+                palette.appendChild(item);
+            }
+        });
+    };
+</script>
+</body>
+</html>
